@@ -86,4 +86,6 @@ class SudokuSolver:
         return progress
 
 if __name__ == "__main__":
-    SudokuSolver(9, 9)
+    rows = 9
+    columns = 9
+    SudokuSolver(rows, columns)
