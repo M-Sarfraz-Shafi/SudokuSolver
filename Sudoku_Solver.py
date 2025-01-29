@@ -21,16 +21,28 @@ class SudokuSolver:
 
     # Initialize Game
     def initialize_grid(self):
+        # initial_values = [
+        #     [0, 0, 0, 5, 4, 9, 2, 6, 7],
+        #     [0, 0, 9, 8, 0, 6, 0, 4, 3],
+        #     [6, 4, 2, 0, 3, 7, 8, 0, 9],
+        #     [0, 8, 0, 0, 0, 4, 7, 0, 6],
+        #     [3, 9, 6, 7, 8, 2, 0, 0, 0],
+        #     [0, 7, 4, 9, 6, 1, 3, 0, 0],
+        #     [4, 1, 7, 0, 9, 0, 6, 3, 8],
+        #     [0, 0, 5, 0, 7, 3, 9, 0, 0],
+        #     [0, 2, 0, 6, 1, 0, 0, 7, 5]
+        # ]
+
         initial_values = [
-            [0, 0, 0, 5, 4, 9, 2, 6, 7],
-            [0, 0, 9, 8, 0, 6, 0, 4, 3],
-            [6, 4, 2, 0, 3, 7, 8, 0, 9],
-            [0, 8, 0, 0, 0, 4, 7, 0, 6],
-            [3, 9, 6, 7, 8, 2, 0, 0, 0],
-            [0, 7, 4, 9, 6, 1, 3, 0, 0],
-            [4, 1, 7, 0, 9, 0, 6, 3, 8],
-            [0, 0, 5, 0, 7, 3, 9, 0, 0],
-            [0, 2, 0, 6, 1, 0, 0, 7, 5]
+            [0, 6, 0, 3, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 9, 0, 7],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 8, 6, 0, 0, 2, 0, 0],
+            [7, 0, 0, 0, 0, 0, 1, 0, 0],
+            [0, 0, 9, 0, 0, 0, 0, 0, 0],
+            [0, 1, 0, 0, 0, 0, 0, 3, 5],
+            [4, 0, 0, 0, 0, 7, 0, 6, 0],
+            [0, 0, 0, 0, 9, 0, 0, 0, 0]
         ]
         self.board = np.array(initial_values)
         
@@ -65,7 +77,9 @@ class SudokuSolver:
 
     # Algorithm Starts to Solve 
     def start_solving(self):
+
         while True:
+            progress = self.last_possible_number()
             progress = self.obvious_singles()
             if not progress:
                 break
@@ -79,11 +93,111 @@ class SudokuSolver:
                     
                     # Use iterator to get the num from hints
                     num = next(iter(self.hints[row][col]))
+                    self.setvalue(row, col, num)
+                    progress = True
+        return progress
+   
+    def setvalue(self, row, col, num):
+        self.board[row][col] = num
+        self.hints[row][col] = set()
+        self.remove_hint(row, col, num)
+                    
+    def last_remaining_cell(self):
+        """
+        Check if there is any value that exits only in one cell in either row or column or in sub-grid 
+        """
+        progress = False
+
+        n_hints = self.rows + 1
+        
+        for row in range(self.rows):
+            for col in range(self.cols):
+                if self.board[row][col] == 0 and len(self.hints[row][col]) == 1:
+                    
+                    # Use iterator to get the num from hints
+                    num = next(iter(self.hints[row][col]))
                     self.board[row][col] = num
                     self.hints[row][col] = set()
                     self.remove_hint(row, col, num)
                     progress = True
         return progress
+
+    def last_possible_number(self):
+        unique_hints = self.find_unique_hints()
+
+        if unique_hints:
+            for row, col, value in unique_hints:
+                self.setvalue(row, col, value)
+
+            return True
+        else:
+            return False
+
+
+        
+        
+    def find_unique_hints(self):
+        row_counts, col_counts, box_counts = self.compute_hint_counts()
+
+        unique_hints = []  # Store (row, col, value) for unique hints
+
+        # Check rows for unique hints
+        for row in range(self.rows):
+            for hint, count in row_counts[row].items():
+                if count == 1:  # If a hint appears only once in the row
+                    
+                    # Find the column where this hint exists
+                    for col in range(self.cols):
+                        if self.board[row][col] == 0 and hint in self.hints[row][col]:
+                            unique_hints.append((row, col, hint))
+                            break  # Only one occurrence, no need to check further
+
+        # Check columns for unique hints
+        for col in range(self.cols):
+            for hint, count in col_counts[col].items():
+                if count == 1:  # If a hint appears only once in the column
+                    # Find the row where this hint exists
+                    for row in range(self.rows):
+                        if self.board[row][col] == 0 and hint in self.hints[row][col]:
+                            unique_hints.append((row, col, hint))
+                            break
+
+        # Check boxes for unique hints
+        for box_row in range(3):
+            for box_col in range(3):
+                for hint, count in box_counts[box_row][box_col].items():
+                    if count == 1:  # If a hint appears only once in the box
+                        # Find the exact cell where this hint exists
+                        for r in range(box_row * 3, box_row * 3 + 3):
+                            for c in range(box_col * 3, box_col * 3 + 3):
+                                if self.board[r][c] == 0 and hint in self.hints[r][c]:
+                                    unique_hints.append((r, c, hint))
+                                    break
+                            else:
+                                continue
+                            break
+
+        return unique_hints 
+
+
+    def compute_hint_counts(self):
+        # Initialize hint counts for rows, columns, and boxes
+        row_hint_counts = [{i: 0 for i in range(1, 10)} for _ in range(self.rows)]
+        col_hint_counts = [{i: 0 for i in range(1, 10)} for _ in range(self.cols)]
+        box_hint_counts = [[{i: 0 for i in range(1, 10)} for _ in range(3)] for _ in range(3)]
+
+        # Iterate through the board and count hints
+        for row in range(self.rows):
+            for col in range(self.cols):
+                if self.board[row][col] == 0:  # Only consider unsolved cells
+                    for hint in self.hints[row][col]:
+                        row_hint_counts[row][hint] += 1
+                        col_hint_counts[col][hint] += 1
+                        box_row, box_col = row // 3, col // 3
+                        box_hint_counts[box_row][box_col][hint] += 1
+
+        return row_hint_counts, col_hint_counts, box_hint_counts
+
 
 if __name__ == "__main__":
     rows = 9
