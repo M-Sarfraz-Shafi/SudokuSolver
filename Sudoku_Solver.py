@@ -2,7 +2,6 @@ import tkinter as tk
 import numpy as np
 from sudoku_display_board import SudokuDisplayBoard
 
-
 class SudokuSolver:
     def __init__(self, rows, columns):
         self.rows = rows
@@ -79,13 +78,18 @@ class SudokuSolver:
     def start_solving(self):
 
         while True:
-            progress = self.last_possible_number()
-            progress = self.obvious_singles()
-            if not progress:
+            progress1 = self.last_possible_number()
+            self.gui.update_board(self.board.tolist())
+            
+            
+            progress2 = self.obvious_singles()
+            self.gui.update_board(self.board.tolist())
+            
+            if not progress1 and not progress2:
                 break
-        self.gui.update_board(self.board.tolist())
 
     def obvious_singles(self):
+        
         progress = False
         for row in range(self.rows):
             for col in range(self.cols):
